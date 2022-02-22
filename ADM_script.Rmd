@@ -1,0 +1,450 @@
+---
+title: "ADM_script"
+author: "CHENEL Hugo"
+date: "02/04/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Introduction
+
+### Questions écologiques
+
+La présence ou l'absence des différentes espèces de Salmonidés depend-elle des variables environnementales ? Déterminer éventuellement lesquelles ont-une influence.
+
+Existent-ils des différences de diversité des espèces entre les sites. Si oui, quelles sont-elles ?
+
+
+
+## Jeu de données et librairies
+```{r}
+library(ade4)
+library(rpart)
+library(vegan)
+library(knitr)
+```
+
+
+Les 4 jeux de données décrivent des bassins hydrographiques en Europe. Il s'agit de toute l'aire géographique drainée par un fleuve.
+```{r}
+data_geo = read.table("data_geo.txt",header=T); head(data_geo); names(data_geo)
+data_geo = data_geo[,-1]
+data_climat = read.table("data_climat.txt",header=T); head(data_climat); names(data_climat)
+data_climat = data_climat[,-1]
+data_landcover = read.table("data_landcover.txt",header=T); head(data_landcover); names(data_landcover)
+data_landcover = data_landcover[,-1]
+data_sp = read.table("data_sp.txt",header=T); head(data_sp); names(data_sp)
+class(data_sp)
+data_sp = data_sp[,-1]
+```
+
+geo contient les variables géographiques/morphologiques
+climat contient les variables climatiques
+landcover contient les variables d'occupation du sol
+sp contient les présences-absences de 10 espèces de Salmonidés
+
+Les 3 premiers tableaux contiennent les variables environnementales. (= milieu)
+
+
+
+## Méthodes d’analyses
+
+### Exploration de sp
+```{r}
+kable(head(data_sp))
+```
+
+
+#### ACP du tableau de données des espèces : acp_sp
+```{r}
+acp_sp = dudi.pca(data_sp, scale=F, nf =2, scannf=F)  # ACP non normée
+acp_sp_nor = dudi.pca(data_sp, scale=T, nf=2, scannf=F) # ACP normée
+```
+
+
+#### Valeurs propres de sp
+```{r}
+names(acp_sp)
+head(acp_sp$tab)
+acp_sp$eig
+barplot(acp_sp$eig)
+
+sum(acp_sp$eig)
+acp_sp$eig[1]/sum(acp_sp$eig)
+acp_sp$eig[2]/sum(acp_sp$eig)
+acp_sp$eig[1]/sum(acp_sp$eig) + acp_sp$eig[2]/sum(acp_sp$eig)
+```
+Avec les deux premiers axes, on explique 53.2% de la variabilité
+
+
+#### Coefficients de combinaisons linéaires des variables de sp
+```{r}
+acp_sp$co
+```
+Oncorhynchus_mykiss     0.10323458  0.37046143
+Oncorhynchus_mykiss participe à la construction de l'axe 2
+
+Salmo_salar            -0.38257510 -0.09425003
+Salmo_salar participe à la construction de l'axe 1
+
+
+#### Représentation graphique
+```{r}
+s.corcircle(acp_sp$co)
+s.label(acp_sp$li, xax = 1, yax = 2)
+scatter(acp_sp)
+```
+
+
+### Exploration de geo
+
+```{r}
+pairs(data_geo)
+boxplot(data_geo)
+```
+
+
+#### ACP du tableau de données geo : acp_geo
+```{r}
+acp_geo = dudi.pca(data_geo, scale=F, nf =2, scannf=F)  # ACP non normée
+acp_geo_nor = dudi.pca(data_geo, scale=T, nf =2, scannf=F)  # ACP normée
+```
+
+
+#### Valeurs propres de geo
+```{r}
+names(acp_geo_nor)
+acp_geo_nor$eig
+barplot(acp_geo_nor$eig)
+
+sum(acp_geo_nor$eig)
+acp_geo_nor$eig[1]/sum(acp_geo_nor$eig)
+acp_geo_nor$eig[2]/sum(acp_geo_nor$eig)
+acp_geo_nor$eig[1]/sum(acp_geo_nor$eig) + acp_geo_nor$eig[2]/sum(acp_geo_nor$eig)
+```
+Avec les deux premiers axes, on explique 60.6% de la variabilité
+
+
+#### Coefficients de combinaisons linéaires des variables de geo
+```{r}
+acp_geo$co
+```
+Ele_range         0.8198659  0.08270846
+Ele_range participe à la construction de l'axe 1
+
+Area              0.2589962 -0.73053636
+Area participe à la construction de l'axe 2
+
+
+#### Représentation graphique
+```{r}
+s.corcircle(acp_geo$co)
+s.label(acp_geo$li, xax = 1, yax = 2)
+scatter(acp_geo)
+```
+
+
+
+### Exploration de climat
+
+```{r}
+pairs(data_climat)
+boxplot(data_climat)
+```
+
+
+#### ACP du tableau de données climat : acp_climat
+```{r}
+acp_climat = dudi.pca(data_climat, scale=F, nf =2, scannf=F)
+acp_climat_nor = dudi.pca(data_climat, scale=T, nf =2, scannf=F)
+```
+
+
+#### Valeurs propres de climat
+```{r}
+names(acp_climat_nor)
+acp_climat_nor$eig
+barplot(acp_climat_nor$eig)
+
+sum(acp_climat_nor$eig)
+acp_climat_nor$eig[1]/sum(acp_climat_nor$eig)
+acp_climat_nor$eig[2]/sum(acp_climat_nor$eig)
+acp_climat_nor$eig[1]/sum(acp_climat_nor$eig) + acp_climat_nor$eig[2]/sum(acp_climat_nor$eig)
+```
+Avec les deux premiers axes, on explique 89% de la variabilité
+
+
+#### Coefficients de combinaisons linéaires des variables de climat
+```{r}
+acp_climat$co
+```
+Twarm -0.9133491 -0.2798882
+Twarm participe à la construction de l'axe 1
+
+Pwett  0.4221108 -0.7980709
+Pwett participe à la construction de l'axe 2
+
+
+#### Représentation graphique
+```{r}
+s.corcircle(acp_climat$co)
+s.label(acp_climat$li, xax = 1, yax = 2)
+scatter(acp_climat)
+```
+
+
+
+### Exploration de landcover
+
+```{r}
+pairs(data_landcover)
+boxplot(data_landcover)
+```
+
+
+#### ACP du tableau de données landcover : landcover
+```{r}
+acp_landcover = dudi.pca(data_landcover, scale=F, nf =2, scannf=F)
+acp_landcover_nor = dudi.pca(data_landcover, scale=T, nf =2, scannf=F)
+
+```
+
+
+#### Valeurs propres de landcover
+```{r}
+names(acp_landcover_nor)
+acp_landcover_nor$eig
+barplot(acp_landcover_nor$eig)
+
+sum(acp_landcover_nor$eig)
+acp_landcover_nor$eig[1]/sum(acp_landcover_nor$eig)
+acp_landcover_nor$eig[2]/sum(acp_landcover_nor$eig)
+acp_landcover_nor$eig[1]/sum(acp_landcover_nor$eig) + acp_landcover_nor$eig[2]/sum(acp_landcover_nor$eig)
+```
+Avec les deux premiers axes, on explique 71.4% de la variabilité
+
+
+#### Coefficients de combinaisons linéaires des variables de landcover
+```{r}
+acp_landcover_nor$co
+```
+Pop   0.8289021  0.1759902
+Pop participe à la construction de l'axe 1
+
+Herb -0.4265378  0.8923576
+Herb participe à la construction de l'axe 2
+
+
+#### Représentation graphique
+```{r}
+s.corcircle(acp_landcover_nor$co)
+s.label(acp_landcover_nor$li, xax = 1, yax = 2)
+scatter(acp_landcover_nor)
+```
+
+
+
+### Analyse canonique des correspondances (ACC) : AFC du tableau des espèces et ACP normée du tableau milieu
+
+```{r}
+coa_sp = dudi.coa(data_sp, scannf = FALSE, nf = 2)
+coa_sp
+```
+
+
+```{r}
+cca_geo = pcaiv(coa_sp, data_geo, scannf = FALSE, nf = 2) 
+cca_climat = pcaiv(coa_sp, data_climat, scannf = FALSE, nf = 2) 
+cca_landcover = pcaiv(coa_sp, data_landcover, scannf = FALSE, nf = 2)
+```
+
+
+#### Représentation graphique
+```{r}
+s.corcircle(cca_geo$as, sub = "geo", csub=3, possub = "bottomleft") 
+s.corcircle(cca_climat$as, sub = "climat", csub=3, possub = "bottomleft") 
+s.corcircle(cca_landcover$as, sub = "landcover", csub=3, possub = "bottomleft")
+```
+geo et climat sont conservés
+
+
+#### Représentation graphique pour geo
+```{r}
+s.label(cca_geo$li, clab=0)
+s.label(cca_geo$co, add.plot=T)
+s.arrow(cca_geo$fa)
+s.match(cca_geo$li, cca_geo$ls, clab=0.5)  # la répartition des espèces est assez bien expliquée par la variable geo car les flèches sont en moyenne de longueur courte mais se croisent souvent
+```
+Salvelinus alpinus corrélation positive avec slope.
+Coregonus albula corrélation positive avec X et Strahler.
+Oncorhynchus gorbusha corrélation positive avec Y (latitude).
+
+
+#### Représentation graphique pour climat
+```{r}
+s.label(cca_climat$li, clab=0)
+s.label(cca_climat$co, add.plot=T)
+s.arrow(cca_climat$fa)
+s.match(cca_climat$li, cca_climat$ls, clab=0.5)  # la répartirion des espèces est assez bien expliquée par la variable climat car les flèches sont en moyenne de longueur courte mais se croisent souvent
+```
+Salvelinus alpinus corrélation positive avec Tcold.
+Coregonus albula corrélation positive avec Tmean.
+
+
+
+### ACC librairie vegan
+
+#### Modèle 1
+```{r}
+cca2 = cca(data_sp ~ Twarm + Tcold, data_climat)
+anova(cca2)
+```
+p-value < 0.05, H0 rejetée
+
+
+#### Modèle 2
+```{r}
+anova(cca(data_sp ~ Pwett + Condition(Twarm + Tcold), data_climat))
+```
+p-value > 0.05, H0 non rejetée
+
+
+
+
+### Analyse de co-inertie avec landcover (car non utilisée pour ACC)
+
+```{r}
+acp_landcover = dudi.pca(data_landcover, scale=T, nf=2, scannf=FALSE)
+```
+ACP sur le tableau data_landcover
+
+
+```{r}
+coiner = coinertia(acp_sp, acp_landcover, nf = 2,scannf = FALSE ) # Analyse de co-inertie
+names(coiner)
+```
+
+
+#### Représentation graphique
+```{r}
+s.corcircle(coiner$aX)
+s.corcircle(coiner$aY)
+s.arrow(coiner$c1)
+s.arrow(coiner$l1)
+plot(coiner)
+```
+Pop corrélé positivement avec Oncorhynchus mykiss
+Herb corrélé positivement avec Salmo Salar
+Tree corrélé positivement Salvelinus fontinalis
+
+
+
+
+## Approche descriptive : statistique exploratoire
+
+### Classification  : Clustering K-means
+
+
+#### Exploitation des données
+```{r}
+library(ade4)
+data_geo$loc = cbind(data_geo[,1], data_geo[,2])
+s.value(data_geo$loc, acp_geo_nor$li[,1],addax=FALSE)
+```
+
+
+```{r}
+div_sites_q1 = which((apply(data_sp, 1, sum)< quantile(apply(data_sp, 1, sum), probs = 0.25))==TRUE)
+                                                       
+div_sites_q3 = which((apply(data_sp, 1, sum)> quantile(apply(data_sp, 1, sum), probs = 0.75))==TRUE)
+```
+
+
+```{r}
+data_geo_low = data_geo[,1:2][div_sites_q1,]
+data_geo_low$div = "low"
+data_geo_high = data_geo[,1:2][div_sites_q3,]
+data_geo_high$div = "high"
+data_geo_extreme = rbind(data_geo_low, data_geo_high)
+vector_div = ifelse(data_geo_extreme$div == "low","blue","red")
+data_geo_extreme_s = scale(rbind(data_geo_low, data_geo_high)[,1:2])
+data_geo_extreme_s = cbind(data_geo_extreme_s,as.data.frame(vector_div))
+data_geo_extreme_k = kmeans(data_geo_extreme[,1:2],2)
+```
+
+
+#### Représentation graphique
+```{r}
+plot(data_geo_extreme[,1:2], col = as.vector(data_geo_extreme_s$vector_div), 
+     pch = ifelse(as.numeric(data_geo_extreme_k$cluster) == 1, 16,17) , ylab = "Latitude", xlab = "Longitude")
+
+legend(6.35e+06, 5.3e+06, legend = c("First cluster", "Second cluster 2", "High diversity", "Low diversity"), 
+       pch = c(16,17,15,15) , col = c("black","black", "red", "blue"), cex = 0.6) 
+```
+
+
+
+### Arbre de décision basé sur la température maximale Twarm
+```{r}
+data_climat_low = data_climat[div_sites_q1,]
+data_climat_low$div = "low"
+data_climat_high = data_climat[div_sites_q3,] 
+data_climat_high$div = "high"
+data_climat_extreme = rbind(data_climat_low, data_climat_high)
+```
+
+
+#### Représentation graphique Twarm
+```{r}
+plot(rpart(data_climat_extreme$div~.,data_climat_extreme[1:6]), margin = .9) ; text(rpart(data_climat_extreme$div~.,data_climat_extreme[1:6]), use.n = TRUE, cex =.8) 
+boxplot(data_climat_low$Twarm,data_climat_high$Twarm,
+        names = c("Low diversity", "High diversity"), ylab = "Twarm (°F)", cex = 0.6)
+```
+
+
+
+### Arbre de décision basé sur la température moyenne Tmean
+```{r}
+data_climat_low_l = cbind(as.data.frame(data_climat[div_sites_q1,][,1]),data_climat[div_sites_q1,][,3:6])
+colnames(data_climat_low_l) = c("Tmean", "Tcold", "Pmean", "Pwett", "Pdry")
+data_climat_low_l$div = "low"
+data_climat_high_l = cbind(as.data.frame(data_climat[div_sites_q3,][,1]),data_climat[div_sites_q3,][,3:6])
+colnames(data_climat_high_l) = c("Tmean", "Tcold", "Pmean", "Pwett", "Pdry") 
+data_climat_high_l$div = "high"
+data_climat_extreme_l = rbind(data_climat_low_l, data_climat_high_l)
+data_climat_extreme_l
+```
+
+
+#### Représentation graphique Tmean
+```{r}
+plot(rpart(data_climat_extreme_l$div~.,data_climat_extreme_l[1:5]), margin = .9) ;
+text(rpart(data_climat_extreme_l$div~.,data_climat_extreme_l[1:5]), use.n = TRUE, cex =.8)
+boxplot(data_climat_low$Tmean,data_climat_high$Tmean,
+        names = c("Low diversity", "High diversity"), ylab = "Tmean (°F)", cex = 0.6)
+```
+
+
+
+### Test de la significativité pour la température maximale
+
+#### Test de la normalité pour low-diversity et high-diversity
+```{r}
+shapiro.test(data_climat_low$Twarm)  # normalité non rejetée
+shapiro.test(data_climat_high$Twarm) # normalité non rejetée
+```
+
+
+#### Test de l'égalité des variances
+```{r}
+var.test(data_climat_low$Twarm,data_climat_high$Twarm) # égalité des variances non rejetée
+```
+
+
+#### Test de Student
+```{r}
+t.test(data_climat_low$Twarm,data_climat_high$Twarm, "greater")  # température significativement plus élevée dans les sites à faible diversité
+```
+
+
